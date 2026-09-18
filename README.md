@@ -1,112 +1,187 @@
-# Data Science Project Boilerplate
+# Streamlit Diabetes Risk Predictor
 
-This boilerplate is designed to kickstart data science projects by providing a basic setup for database connections, data processing, and machine learning model development. It includes a structured folder organization for your datasets and a set of pre-defined Python packages necessary for most data science tasks.
+A Streamlit web application that uses a trained machine-learning pipeline to estimate the probability of a positive diabetes outcome from eight patient characteristics.
 
-## Structure
+## Live application
 
-The project is organized as follows:
+**[Open the deployed Streamlit application](https://streamlit-diabetes-predictor-1.onrender.com/)**
 
-- **`src/app.py`** → Main Python script where your project will run.
-- **`src/explore.ipynb`** → Notebook for exploration and testing. Once exploration is complete, migrate the clean code to `app.py`.
-- **`src/utils.py`** → Auxiliary functions, such as database connection.
-- **`requirements.txt`** → List of required Python packages.
-- **`models/`** → Will contain your SQLAlchemy model classes.
-- **`data/`** → Stores datasets at different stages:
-  - **`data/raw/`** → Raw data.
-  - **`data/interim/`** → Temporarily transformed data.
-  - **`data/processed/`** → Data ready for analysis.
+https://streamlit-diabetes-predictor-1.onrender.com/
 
+The application is hosted as a Render web service. Because it uses Render's free tier, the service may take approximately one minute to wake up after a period of inactivity.
 
-## ⚡ Initial Setup in Codespaces (Recommended)
+## Project overview
 
-No manual setup is required, as **Codespaces is automatically configured** with the predefined files created by the academy for you. Just follow these steps:
+This project demonstrates how a trained machine-learning model can be integrated into an interactive Streamlit interface and deployed online.
 
-1. **Wait for the environment to configure automatically**.
-   - All necessary packages and the database will install themselves.
-   - The automatically created `username` and `db_name` are in the **`.env`** file at the root of the project.
-2. **Once Codespaces is ready, you can start working immediately**.
+The model was originally developed for a Flask deployment project. The same trained pipeline was reused here so that the project could focus on:
 
+- Building an interactive interface with Streamlit
+- Collecting and validating user input
+- Generating model predictions and probabilities
+- Displaying results clearly
+- Deploying a Streamlit application on Render
 
-## 💻 Local Setup (Only if you can't use Codespaces)
+## Input features
 
-**Prerequisites**
+The model expects the following eight features:
 
-Make sure you have Python 3.11+ installed on your machine. You will also need pip to install the Python packages.
+| Feature | Description |
+|---|---|
+| `Pregnancies` | Number of pregnancies |
+| `Glucose` | Plasma glucose concentration |
+| `BloodPressure` | Diastolic blood pressure |
+| `SkinThickness` | Triceps skin-fold thickness |
+| `Insulin` | Serum insulin |
+| `BMI` | Body mass index |
+| `DiabetesPedigreeFunction` | Diabetes pedigree function |
+| `Age` | Age in years |
 
-**Installation**
+## Model pipeline
 
-Clone the project repository to your local machine.
+The saved scikit-learn pipeline contains preprocessing and prediction steps.
 
-Navigate to the project directory and install the required Python packages:
+### Preprocessing
+
+The following variables may contain `0` values that represent missing measurements:
+
+- `Glucose`
+- `BloodPressure`
+- `SkinThickness`
+- `Insulin`
+- `BMI`
+
+A `SimpleImputer` replaces these zero values with the median learned from the training data. The other features pass through the preprocessing step unchanged.
+
+Because preprocessing is stored inside the same pipeline as the model, the application applies exactly the same transformations that were used during model development.
+
+### Classifier
+
+The prediction model is a `RandomForestClassifier` configured with:
+
+```text
+n_estimators=300
+max_depth=6
+min_samples_leaf=4
+random_state=42
+```
+
+The application reports:
+
+- The predicted outcome class
+- The estimated probability of the positive class
+- A lower- or higher-likelihood message
+- The submitted feature values
+
+## Streamlit interface
+
+The interface was developed entirely in Python with Streamlit. It includes:
+
+- Numeric inputs organized into two columns
+- A form that submits all values together
+- A probability metric and progress bar
+- Color-coded prediction messages
+- An expandable table of submitted values
+- A medical-use disclaimer
+
+The trained pipeline is loaded with `joblib` and cached with `st.cache_resource`. Streamlit reruns the script when the user interacts with the application, while caching prevents the model from being repeatedly loaded from disk.
+
+## Project structure
+
+```text
+streamlit-diabetes-predictor/
+├── models/
+│   └── diabetes_pipeline.pkl
+├── src/
+│   └── app.py
+├── .python-version
+├── requirements.txt
+└── README.md
+```
+
+## Run locally
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/icuhekim/streamlit-diabetes-predictor.git
+cd streamlit-diabetes-predictor
+```
+
+### 2. Create and activate a virtual environment
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
+
+On Windows:
+
+```bash
+.venv\Scripts\activate
+```
+
+### 3. Install the dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-**Create a database (if necessary)**
-
-Create a new database within the Postgres engine by customizing and executing the following command:
+### 4. Start the application
 
 ```bash
-$ psql -U postgres -c "DO \$\$ BEGIN 
-    CREATE USER my_user WITH PASSWORD 'my_password'; 
-    CREATE DATABASE my_database OWNER my_user; 
-END \$\$;"
+streamlit run src/app.py
 ```
-Connect to the Postgres engine to use your database, manipulate tables, and data:
+
+The application will usually open at:
+
+```text
+http://localhost:8501
+```
+
+## Render deployment
+
+The application is deployed on Render as a Python web service.
+
+### Build command
 
 ```bash
-$ psql -U my_user -d my_database
+pip install -r requirements.txt
 ```
 
-Once inside PSQL, you can create tables, run queries, insert, update, or delete data, and much more!
-
-**Environment Variables**
-
-Create a .env file in the root directory of the project to store your environment variables, such as your database connection string:
-
-```makefile
-DATABASE_URL="postgresql://<USER>:<PASSWORD>@<HOST>:<PORT>/<DB_NAME>"
-
-#example
-DATABASE_URL="postgresql://my_user:my_password@localhost:5432/my_database"
-```
-
-## Running the Application
-
-To run the application, execute the app.py script from the root directory of the project:
+### Start command
 
 ```bash
-python src/app.py
+streamlit run src/app.py --server.address 0.0.0.0 --server.port $PORT
 ```
 
-## Adding Models
+### Health-check path
 
-To add SQLAlchemy model classes, create new Python script files within the models/ directory. These classes should be defined according to your database schema.
-
-Example model definition (`models/example_model.py`):
-
-```py
-from sqlalchemy.orm import declarative_base
-from sqlalchemy import String
-from sqlalchemy.orm import Mapped, mapped_column
-
-Base = declarative_base()
-
-class ExampleModel(Base):
-    __tablename__ = 'example_table'
-    id: Mapped[int] = mapped_column(primary_key=True)
-    username: Mapped[str] = mapped_column(unique=True)
+```text
+/_stcore/health
 ```
 
-## Working with Data
+Python 3.12 is specified in `.python-version` to maintain compatibility with the project's pinned dependencies.
 
-You can place your raw datasets in the data/raw directory, intermediate datasets in data/interim, and processed datasets ready for analysis in data/processed.
+## External resources
 
-To process data, you can modify the app.py script to include your data processing steps, using pandas for data manipulation and analysis.
+The following documentation was used during development and deployment:
 
-## Contributors
+- [Streamlit documentation](https://docs.streamlit.io/)
+- [Render documentation](https://render.com/docs)
+- [scikit-learn documentation](https://scikit-learn.org/stable/)
 
-This template was built as part of the [Data Science and Machine Learning Bootcamp](https://4geeksacademy.com/us/coding-bootcamps/datascience-machine-learning) by 4Geeks Academy by [Alejandro Sanchez](https://twitter.com/alesanchezr) and many other contributors. Learn more about [4Geeks Academy BootCamp programs](https://4geeksacademy.com/us/programs) here.
+## Limitations
 
-Other templates and resources like this can be found on the school's GitHub page.
+This application is an educational demonstration and is not intended for diagnosis, screening, treatment decisions, or other clinical use.
+
+The probability is a model estimate based on patterns in the training dataset. It is not equivalent to an individual patient's true probability of having or developing diabetes. Performance may differ in populations that are not adequately represented in the original data.
+
+## Technologies
+
+- Python 3.12
+- Streamlit
+- pandas
+- scikit-learn
+- joblib
+- Render
